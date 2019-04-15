@@ -22,23 +22,41 @@ let rec combineValidation =
   };
 
 let number: Index.validator =
-  value =>
+  (value, path) =>
     isNumber(value) ?
       Success :
       Fail([
-        {path: "", message: Js.Json.stringify(value) ++ " is not a number"},
+        {path, message: Js.Json.stringify(value) ++ " is not a number"},
       ]);
 
 let list =
   (. validator: Index.validator) =>
-    (. value: Js.Array.t(Index.value)) => (
+    (. value: Js.Array.t(Index.value), path: string) => (
       {
         let valueList = Belt.List.fromArray(value);
         let validationList =
-          List.map(Index.doValidation(validator), valueList);
+          List.mapi(
+            (i, v) =>
+              Index.doValidation(validator, v, Belt.Int.toString(i)),
+            valueList,
+          );
         combineValidation(validationList);
       }: Index.validation
     );
+
+let record =
+  (. record: Js.Dict.t(Index.validator)) =>
+    (. value: Js.Dict.t(Index.value), path: string) => {
+        let validatorKeys = Js.Dict.keys(record)
+        let validationArray = Js.Array.map(vkey => {
+            let mVal = Js.Dict.get(value, vkey)
+            switch(mVal) {
+            | Some(v) => Index.doValidation(Js.Dict.unsafeGet(record, vkey), v, vkey)
+            | None => Fail([{path: path, message: "key: " ++ vkey ++ " not found"}])
+            }
+        },validatorKeys)
+        combineValidation(Belt.List.fromArray(validationArray))
+    };
 
 [@bs.deriving abstract]
 type customV = {
@@ -47,7 +65,7 @@ type customV = {
 };
 let custom =
   (. customV: customV) =>
-    (. value: value) => (
+    (. value: value, path: string) => (
       validatorGet(customV, value) ?
-        Success : Fail([{path: "", message: messageGet(customV, value)}]): Index.validation
+        Success : Fail([{path, message: messageGet(customV, value)}]): Index.validation
     );

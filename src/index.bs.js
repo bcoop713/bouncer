@@ -18,12 +18,12 @@ function convertToJs(validation) {
   }
 }
 
-function doValidation(validator, value) {
-  return Curry._1(validator, value);
+function doValidation(validator, value, path) {
+  return Curry._2(validator, value, path);
 }
 
 function validate(validator, value) {
-  return convertToJs(Curry._1(validator, value));
+  return convertToJs(Curry._2(validator, value, ""));
 }
 
 exports.convertToJs = convertToJs;

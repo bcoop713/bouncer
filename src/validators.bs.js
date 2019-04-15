@@ -4,7 +4,9 @@
 var List = require("bs-platform/lib/js/list.js");
 var Curry = require("bs-platform/lib/js/curry.js");
 var Is_js = require("is_js");
+var Js_dict = require("bs-platform/lib/js/js_dict.js");
 var Belt_List = require("bs-platform/lib/js/belt_List.js");
+var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Index$Bouncer = require("./index.bs.js");
 
 function concatValidation(v1, v2) {
@@ -43,14 +45,14 @@ function combineValidation(validations) {
   }
 }
 
-function number(value) {
+function number(value, path) {
   var match = Is_js.number(value);
   if (match) {
     return /* Success */0;
   } else {
     return /* Fail */[/* :: */[
               /* record */[
-                /* path */"",
+                /* path */path,
                 /* message */JSON.stringify(value) + " is not a number"
               ],
               /* [] */0
@@ -59,23 +61,44 @@ function number(value) {
 }
 
 function list(validator) {
-  return (function (value) {
+  return (function (value, path) {
       var valueList = Belt_List.fromArray(value);
-      return combineValidation(List.map((function (param) {
-                        return Index$Bouncer.doValidation(validator, param);
+      return combineValidation(List.mapi((function (i, v) {
+                        return Index$Bouncer.doValidation(validator, v, String(i));
                       }), valueList));
     });
 }
 
+function record(record$1) {
+  return (function (value, path) {
+      var validatorKeys = Object.keys(record$1);
+      var validationArray = validatorKeys.map((function (vkey) {
+              var mVal = Js_dict.get(value, vkey);
+              if (mVal !== undefined) {
+                return Index$Bouncer.doValidation(record$1[vkey], Caml_option.valFromOption(mVal), vkey);
+              } else {
+                return /* Fail */[/* :: */[
+                          /* record */[
+                            /* path */path,
+                            /* message */"key: " + (vkey + " not found")
+                          ],
+                          /* [] */0
+                        ]];
+              }
+            }));
+      return combineValidation(Belt_List.fromArray(validationArray));
+    });
+}
+
 function custom(customV) {
-  return (function (value) {
+  return (function (value, path) {
       var match = Curry._1(customV.validator, value);
       if (match) {
         return /* Success */0;
       } else {
         return /* Fail */[/* :: */[
                   /* record */[
-                    /* path */"",
+                    /* path */path,
                     /* message */Curry._1(customV.message, value)
                   ],
                   /* [] */0
@@ -88,5 +111,6 @@ exports.concatValidation = concatValidation;
 exports.combineValidation = combineValidation;
 exports.number = number;
 exports.list = list;
+exports.record = record;
 exports.custom = custom;
 /* is_js Not a pure module */

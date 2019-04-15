@@ -16,7 +16,7 @@ type validation =
   | Success
   | Fail(list(failure));
 
-type validator = value => validation;
+type validator = (value, string) => validation;
 
 let convertToJs = (validation: validation): Js.Array.t(jsFailure) =>
   switch (validation) {
@@ -27,10 +27,11 @@ let convertToJs = (validation: validation): Js.Array.t(jsFailure) =>
     |> Belt.List.toArray
   };
 
-let doValidation = (validator: validator, value: value): validation =>
-  validator(value);
+let doValidation =
+    (validator: validator, value: value, path: string): validation =>
+  validator(value, path);
 
 let validate = (validator: validator, value: value): Js.Array.t(jsFailure) => {
-  let validation = validator(value);
+  let validation = doValidation(validator, value, "");
   convertToJs(validation);
 };
