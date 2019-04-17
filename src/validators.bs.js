@@ -2,23 +2,26 @@
 'use strict';
 
 var List = require("bs-platform/lib/js/list.js");
+var Block = require("bs-platform/lib/js/block.js");
 var Curry = require("bs-platform/lib/js/curry.js");
 var Is_js = require("is_js");
 var Js_dict = require("bs-platform/lib/js/js_dict.js");
+var Js_json = require("bs-platform/lib/js/js_json.js");
 var Belt_List = require("bs-platform/lib/js/belt_List.js");
+var Caml_array = require("bs-platform/lib/js/caml_array.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Index$Bouncer = require("./index.bs.js");
 
 function concatValidation(v1, v2) {
-  if (v1) {
-    if (v2) {
-      return /* Fail */[List.concat(/* :: */[
-                    v1[0],
-                    /* :: */[
-                      v2[0],
-                      /* [] */0
-                    ]
-                  ])];
+  if (v1.tag) {
+    if (v2.tag) {
+      return /* Fail */Block.__(1, [List.concat(/* :: */[
+                      v1[0],
+                      /* :: */[
+                        v2[0],
+                        /* [] */0
+                      ]
+                    ])]);
     } else {
       return v1;
     }
@@ -41,52 +44,169 @@ function combineValidation(validations) {
       return v;
     }
   } else {
-    return /* Success */0;
+    return /* Success */Block.__(0, [
+              "",
+              null
+            ]);
   }
 }
 
-function number(value, path) {
-  var match = Is_js.number(value);
-  if (match) {
-    return /* Success */0;
+function bothValidation(v1, v2) {
+  if (v1.tag) {
+    if (v2.tag) {
+      return concatValidation(v1, v2);
+    } else {
+      return v2;
+    }
   } else {
-    return /* Fail */[/* :: */[
-              /* record */[
-                /* path */path,
-                /* message */JSON.stringify(value) + " is not a number"
-              ],
-              /* [] */0
-            ]];
+    return v1;
+  }
+}
+
+function anyValidation(validations) {
+  if (validations) {
+    var vs = validations[1];
+    var v = validations[0];
+    if (vs) {
+      if (vs[1]) {
+        if (v.tag) {
+          return concatValidation(v, anyValidation(vs));
+        } else {
+          return v;
+        }
+      } else {
+        return bothValidation(v, vs[0]);
+      }
+    } else {
+      return v;
+    }
+  } else {
+    return /* Success */Block.__(0, [
+              "",
+              null
+            ]);
   }
 }
 
 function list(validator) {
   return (function (value, path) {
-      var valueList = Belt_List.fromArray(value);
-      return combineValidation(List.mapi((function (i, v) {
-                        return Index$Bouncer.doValidation(validator, v, String(i));
-                      }), valueList));
+      var match = Js_json.decodeArray(value);
+      if (match !== undefined) {
+        var valueList = Belt_List.fromArray(match);
+        return combineValidation(List.mapi((function (i, v) {
+                          return Index$Bouncer.doValidation(validator, v, String(i));
+                        }), valueList));
+      } else {
+        return /* Fail */Block.__(1, [/* :: */[
+                    /* record */[
+                      /* path */path,
+                      /* message */"not a list",
+                      /* label */"list"
+                    ],
+                    /* [] */0
+                  ]]);
+      }
     });
 }
 
 function record(record$1) {
   return (function (value, path) {
-      var validatorKeys = Object.keys(record$1);
-      var validationArray = validatorKeys.map((function (vkey) {
-              var mVal = Js_dict.get(value, vkey);
-              if (mVal !== undefined) {
-                return Index$Bouncer.doValidation(record$1[vkey], Caml_option.valFromOption(mVal), vkey);
-              } else {
-                return /* Fail */[/* :: */[
-                          /* record */[
-                            /* path */path,
-                            /* message */"key: " + (vkey + " not found")
-                          ],
-                          /* [] */0
-                        ]];
-              }
+      var match = Js_json.decodeObject(value);
+      if (match !== undefined) {
+        var value$1 = Caml_option.valFromOption(match);
+        var validatorKeys = Object.keys(record$1);
+        var validationArray = validatorKeys.map((function (vkey) {
+                var mVal = Js_dict.get(value$1, vkey);
+                if (mVal !== undefined) {
+                  return Index$Bouncer.doValidation(record$1[vkey], Caml_option.valFromOption(mVal), vkey);
+                } else {
+                  return /* Fail */Block.__(1, [/* :: */[
+                              /* record */[
+                                /* path */path,
+                                /* message */"key: " + (vkey + " not found"),
+                                /* label */"key"
+                              ],
+                              /* [] */0
+                            ]]);
+                }
+              }));
+        return combineValidation(Belt_List.fromArray(validationArray));
+      } else {
+        return /* Fail */Block.__(1, [/* :: */[
+                    /* record */[
+                      /* path */path,
+                      /* message */"not an object",
+                      /* label */"record"
+                    ],
+                    /* [] */0
+                  ]]);
+      }
+    });
+}
+
+function tuple(validators) {
+  return (function (value, path) {
+      var match = Js_json.decodeArray(value);
+      if (match !== undefined) {
+        var value$1 = match;
+        var validatorList = Belt_List.fromArray(validators);
+        var valueMax = value$1.length - 1 | 0;
+        return combineValidation(List.mapi((function (i, v) {
+                          var indexStr = String(i);
+                          var match = i <= valueMax;
+                          if (match) {
+                            return Index$Bouncer.doValidation(v, Caml_array.caml_array_get(value$1, i), indexStr);
+                          } else {
+                            return /* Fail */Block.__(1, [/* :: */[
+                                        /* record */[
+                                          /* path */path,
+                                          /* message */"index: " + (indexStr + " out of range"),
+                                          /* label */"index"
+                                        ],
+                                        /* [] */0
+                                      ]]);
+                          }
+                        }), validatorList));
+      } else {
+        return /* Fail */Block.__(1, [/* :: */[
+                    /* record */[
+                      /* path */path,
+                      /* message */"not a tuple",
+                      /* label */"tuple"
+                    ],
+                    /* [] */0
+                  ]]);
+      }
+    });
+}
+
+function not(validator) {
+  return (function (value, path) {
+      var match = Index$Bouncer.doValidation(validator, value, path);
+      if (match.tag) {
+        return /* Success */Block.__(0, [
+                  "not",
+                  value
+                ]);
+      } else {
+        return /* Fail */Block.__(1, [/* :: */[
+                    /* record */[
+                      /* path */path,
+                      /* message */JSON.stringify(match[1]) + (" is a " + match[0]),
+                      /* label */"not"
+                    ],
+                    /* [] */0
+                  ]]);
+      }
+    });
+}
+
+function any(validators) {
+  return (function (value, path) {
+      var validations = validators.map((function (v) {
+              return Index$Bouncer.doValidation(v, value, path);
             }));
-      return combineValidation(Belt_List.fromArray(validationArray));
+      return anyValidation(Belt_List.fromArray(validations));
     });
 }
 
@@ -94,23 +214,80 @@ function custom(customV) {
   return (function (value, path) {
       var match = Curry._1(customV.validator, value);
       if (match) {
-        return /* Success */0;
+        return /* Success */Block.__(0, [
+                  customV.label,
+                  value
+                ]);
       } else {
-        return /* Fail */[/* :: */[
-                  /* record */[
-                    /* path */path,
-                    /* message */Curry._1(customV.message, value)
-                  ],
-                  /* [] */0
-                ]];
+        return /* Fail */Block.__(1, [/* :: */[
+                    /* record */[
+                      /* path */path,
+                      /* message */Curry._1(customV.message, value),
+                      /* label */customV.label
+                    ],
+                    /* [] */0
+                  ]]);
       }
     });
 }
 
+var number = custom({
+      validator: (function (prim) {
+          return Is_js.number(prim);
+        }),
+      message: (function (value) {
+          return JSON.stringify(value) + " is not a number";
+        }),
+      label: "number"
+    });
+
+var string = custom({
+      validator: (function (prim) {
+          return Is_js.string(prim);
+        }),
+      message: (function (value) {
+          return JSON.stringify(value) + " is not a string";
+        }),
+      label: "string"
+    });
+
+var _undefined = custom({
+      validator: (function (prim) {
+          return Is_js.undefined(prim);
+        }),
+      message: (function (value) {
+          return JSON.stringify(value) + " is not undefined";
+        }),
+      label: "undefined"
+    });
+
+var _null = custom({
+      validator: (function (prim) {
+          return Is_js.null(prim);
+        }),
+      message: (function (value) {
+          return JSON.stringify(value) + " is not null";
+        }),
+      label: "null"
+    });
+
+function exists(value, path) {
+  return any(/* array */[])(value, path);
+}
+
 exports.concatValidation = concatValidation;
 exports.combineValidation = combineValidation;
-exports.number = number;
+exports.bothValidation = bothValidation;
+exports.anyValidation = anyValidation;
 exports.list = list;
 exports.record = record;
+exports.tuple = tuple;
+exports.not = not;
+exports.any = any;
 exports.custom = custom;
-/* is_js Not a pure module */
+exports.number = number;
+exports.string = string;
+exports._undefined = _undefined;
+exports._null = _null;
+exports.exists = exists;
+/* number Not a pure module */

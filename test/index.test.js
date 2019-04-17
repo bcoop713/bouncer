@@ -1,6 +1,6 @@
 const { validate } = require('../src/index.bs')
 const { email } = require('is_js');
-const { number, list, record, custom } = require('../src/validators.bs')
+const { number, string, list, record, tuple, custom, not, any, exists } = require('../src/validators.bs')
 
 describe('simple', () => {
     test('valid', () => {
@@ -60,6 +60,27 @@ describe('record', () => {
     })
 })
 
+describe('tuple', () => {
+    test('valid', () => {
+        const value = ["cat", 100]
+        const schema = tuple([string, number])
+        const validation = validate(schema, value)
+        expect(validation).toEqual([])
+    })
+    test('invalid: index out of range', () => {
+        const value = ["cat"]
+        const schema = tuple([string, number])
+        const validation = validate(schema, value)
+        expect(validation).toEqual([{ path: '', message: "index: 1 out of range" }])
+    })
+    test('invalid: value type', () => {
+        const value = ["cat", "dog"]
+        const schema = tuple([string, number])
+        const validation = validate(schema, value)
+        expect(validation).toEqual([{ path: '1', message: "\"dog\" is not a number" }])
+    })
+})
+
 describe('complex', () => {
     test('valid: list of objects', () => {
         const value = [{ xp: 100 }, { xp: 120 }, { xp: 0 }]
@@ -93,5 +114,47 @@ describe('custom', () => {
         })
         const validation = validate(customValidator, value)
         expect(validation).toEqual([{ path: '', message: 'testtest.com is not an email' }])
+    })
+})
+
+describe('not', () => {
+    test('valid', () => {
+        const value = 'cat'
+        const validator = not(number)
+        const validation = validate(validator, value)
+        expect(validation).toEqual([])
+    })
+    test('invalid', () => {
+        const value = 3
+        const validator = not(number)
+        const validation = validate(validator, value)
+        expect(validation).toEqual([{ path: '', message: '3 is a number' }])
+    })
+})
+
+describe('any', () => {
+    test('valid', () => {
+        const value = 'cat'
+        const validator = any([number, string])
+        const validation = validate(validator, value)
+        expect(validation).toEqual([])
+    })
+    test('invalid', () => {
+        const value = []
+        const validator = any([number, string])
+        const validation = validate(validator, value)
+        expect(validation).toEqual([
+            { path: '', message: '[] is not a number' },
+            { path: '', message: '[] is not a string' }
+        ])
+    })
+})
+
+describe('exists', () => {
+    test('valid', () => {
+        const value = 3
+        const validator = exists
+        const validation = validate(validator, value)
+        expect(validation).toEqual([])
     })
 })

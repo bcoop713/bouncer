@@ -6,7 +6,7 @@ var Curry = require("bs-platform/lib/js/curry.js");
 var Belt_List = require("bs-platform/lib/js/belt_List.js");
 
 function convertToJs(validation) {
-  if (validation) {
+  if (validation.tag) {
     return Belt_List.toArray(List.map((function (f) {
                       return {
                               path: f[/* path */0],
