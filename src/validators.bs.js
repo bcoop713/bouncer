@@ -88,191 +88,273 @@ function anyValidation(validations) {
   }
 }
 
-function list(validator) {
-  return (function (value, path) {
-      var match = Js_json.decodeArray(value);
-      if (match !== undefined) {
-        var valueList = Belt_List.fromArray(match);
-        return combineValidation(List.mapi((function (i, v) {
-                          return Index$Bouncer.doValidation(validator, v, String(i));
-                        }), valueList));
-      } else {
-        return /* Fail */Block.__(1, [/* :: */[
-                    /* record */[
-                      /* path */path,
-                      /* message */"not a list",
-                      /* label */"list"
-                    ],
-                    /* [] */0
-                  ]]);
-      }
+function list(validator, value, path) {
+  var match = Js_json.decodeArray(value);
+  if (match !== undefined) {
+    var valueList = Belt_List.fromArray(match);
+    return combineValidation(List.mapi((function (i, v) {
+                      return Index$Bouncer.doValidation(validator, v, String(i));
+                    }), valueList));
+  } else {
+    return /* Fail */Block.__(1, [/* :: */[
+                /* record */[
+                  /* path */path,
+                  /* message */"not a list",
+                  /* label */"list"
+                ],
+                /* [] */0
+              ]]);
+  }
+}
+
+function record(record$1, value, path) {
+  var match = Js_json.decodeObject(value);
+  if (match !== undefined) {
+    var value$1 = Caml_option.valFromOption(match);
+    var validatorKeys = Object.keys(record$1);
+    var validationArray = validatorKeys.map((function (vkey) {
+            var mVal = Js_dict.get(value$1, vkey);
+            if (mVal !== undefined) {
+              return Index$Bouncer.doValidation(record$1[vkey], Caml_option.valFromOption(mVal), vkey);
+            } else {
+              var match = Index$Bouncer.doValidation(record$1[vkey], null, vkey);
+              if (match.tag) {
+                return /* Fail */Block.__(1, [/* :: */[
+                            /* record */[
+                              /* path */path,
+                              /* message */"key: " + (vkey + " not found"),
+                              /* label */"key"
+                            ],
+                            /* [] */0
+                          ]]);
+              } else {
+                return /* Success */Block.__(0, [
+                          match[0],
+                          match[1]
+                        ]);
+              }
+            }
+          }));
+    return combineValidation(Belt_List.fromArray(validationArray));
+  } else {
+    return /* Fail */Block.__(1, [/* :: */[
+                /* record */[
+                  /* path */path,
+                  /* message */"not an object",
+                  /* label */"record"
+                ],
+                /* [] */0
+              ]]);
+  }
+}
+
+function tuple(validators, value, path) {
+  var match = Js_json.decodeArray(value);
+  if (match !== undefined) {
+    var value$1 = match;
+    var validatorList = Belt_List.fromArray(validators);
+    var valueMax = value$1.length - 1 | 0;
+    return combineValidation(List.mapi((function (i, v) {
+                      var indexStr = String(i);
+                      var match = i <= valueMax;
+                      if (match) {
+                        return Index$Bouncer.doValidation(v, Caml_array.caml_array_get(value$1, i), indexStr);
+                      } else {
+                        return /* Fail */Block.__(1, [/* :: */[
+                                    /* record */[
+                                      /* path */path,
+                                      /* message */"index: " + (indexStr + " out of range"),
+                                      /* label */"index"
+                                    ],
+                                    /* [] */0
+                                  ]]);
+                      }
+                    }), validatorList));
+  } else {
+    return /* Fail */Block.__(1, [/* :: */[
+                /* record */[
+                  /* path */path,
+                  /* message */"not a tuple",
+                  /* label */"tuple"
+                ],
+                /* [] */0
+              ]]);
+  }
+}
+
+function vNot(validator, value, path) {
+  var match = Index$Bouncer.doValidation(validator, value, path);
+  if (match.tag) {
+    return /* Success */Block.__(0, [
+              "not",
+              value
+            ]);
+  } else {
+    return /* Fail */Block.__(1, [/* :: */[
+                /* record */[
+                  /* path */path,
+                  /* message */JSON.stringify(match[1]) + (" is a " + match[0]),
+                  /* label */"not"
+                ],
+                /* [] */0
+              ]]);
+  }
+}
+
+function any(validators, value, path) {
+  var validations = validators.map((function (v) {
+          return Index$Bouncer.doValidation(v, value, path);
+        }));
+  return anyValidation(Belt_List.fromArray(validations));
+}
+
+function all(validators, value, path) {
+  var validations = validators.map((function (v) {
+          return Index$Bouncer.doValidation(v, value, path);
+        }));
+  return combineValidation(Belt_List.fromArray(validations));
+}
+
+function custom(customV, value, path) {
+  var match = Curry._1(customV.validator, value);
+  if (match) {
+    return /* Success */Block.__(0, [
+              customV.label,
+              value
+            ]);
+  } else {
+    return /* Fail */Block.__(1, [/* :: */[
+                /* record */[
+                  /* path */path,
+                  /* message */Curry._1(customV.message, value),
+                  /* label */customV.label
+                ],
+                /* [] */0
+              ]]);
+  }
+}
+
+var partial_arg = {
+  validator: (function (prim) {
+      return Is_js.number(prim);
+    }),
+  message: (function (value) {
+      return JSON.stringify(value) + " is not a number";
+    }),
+  label: "number"
+};
+
+function number(param, param$1) {
+  return custom(partial_arg, param, param$1);
+}
+
+var partial_arg$1 = {
+  validator: (function (prim) {
+      return Is_js.string(prim);
+    }),
+  message: (function (value) {
+      return JSON.stringify(value) + " is not a string";
+    }),
+  label: "string"
+};
+
+function string(param, param$1) {
+  return custom(partial_arg$1, param, param$1);
+}
+
+var partial_arg$2 = {
+  validator: (function (prim) {
+      return Is_js.undefined(prim);
+    }),
+  message: (function (value) {
+      return JSON.stringify(value) + " is not undefined";
+    }),
+  label: "undefined"
+};
+
+function _undefined(param, param$1) {
+  return custom(partial_arg$2, param, param$1);
+}
+
+var partial_arg$3 = {
+  validator: (function (prim) {
+      return Is_js.null(prim);
+    }),
+  message: (function (value) {
+      return JSON.stringify(value) + " is not null";
+    }),
+  label: "null"
+};
+
+function _null(param, param$1) {
+  return custom(partial_arg$3, param, param$1);
+}
+
+function maxStringLength($$int) {
+  var validator = function (value) {
+    var match = Js_json.decodeString(value);
+    if (match !== undefined) {
+      return match.length <= $$int;
+    } else {
+      return false;
+    }
+  };
+  var partial_arg = {
+    validator: validator,
+    message: (function (value) {
+        return JSON.stringify(value) + (" is greater than " + $$int.toString());
+      }),
+    label: "maxStringLength"
+  };
+  return (function (param, param$1) {
+      return custom(partial_arg, param, param$1);
     });
 }
 
-function record(record$1) {
-  return (function (value, path) {
-      var match = Js_json.decodeObject(value);
-      if (match !== undefined) {
-        var value$1 = Caml_option.valFromOption(match);
-        var validatorKeys = Object.keys(record$1);
-        var validationArray = validatorKeys.map((function (vkey) {
-                var mVal = Js_dict.get(value$1, vkey);
-                if (mVal !== undefined) {
-                  return Index$Bouncer.doValidation(record$1[vkey], Caml_option.valFromOption(mVal), vkey);
-                } else {
-                  return /* Fail */Block.__(1, [/* :: */[
-                              /* record */[
-                                /* path */path,
-                                /* message */"key: " + (vkey + " not found"),
-                                /* label */"key"
-                              ],
-                              /* [] */0
-                            ]]);
-                }
-              }));
-        return combineValidation(Belt_List.fromArray(validationArray));
-      } else {
-        return /* Fail */Block.__(1, [/* :: */[
-                    /* record */[
-                      /* path */path,
-                      /* message */"not an object",
-                      /* label */"record"
-                    ],
-                    /* [] */0
-                  ]]);
-      }
+function minStringLength($$int) {
+  var validator = function (value) {
+    var match = Js_json.decodeString(value);
+    if (match !== undefined) {
+      return match.length >= $$int;
+    } else {
+      return false;
+    }
+  };
+  var partial_arg = {
+    validator: validator,
+    message: (function (value) {
+        return JSON.stringify(value) + (" is less than " + $$int.toString());
+      }),
+    label: "maxStringLength"
+  };
+  return (function (param, param$1) {
+      return custom(partial_arg, param, param$1);
     });
 }
 
-function tuple(validators) {
-  return (function (value, path) {
-      var match = Js_json.decodeArray(value);
-      if (match !== undefined) {
-        var value$1 = match;
-        var validatorList = Belt_List.fromArray(validators);
-        var valueMax = value$1.length - 1 | 0;
-        return combineValidation(List.mapi((function (i, v) {
-                          var indexStr = String(i);
-                          var match = i <= valueMax;
-                          if (match) {
-                            return Index$Bouncer.doValidation(v, Caml_array.caml_array_get(value$1, i), indexStr);
-                          } else {
-                            return /* Fail */Block.__(1, [/* :: */[
-                                        /* record */[
-                                          /* path */path,
-                                          /* message */"index: " + (indexStr + " out of range"),
-                                          /* label */"index"
-                                        ],
-                                        /* [] */0
-                                      ]]);
-                          }
-                        }), validatorList));
-      } else {
-        return /* Fail */Block.__(1, [/* :: */[
-                    /* record */[
-                      /* path */path,
-                      /* message */"not a tuple",
-                      /* label */"tuple"
-                    ],
-                    /* [] */0
-                  ]]);
-      }
-    });
+var partial_arg$4 = /* array */[
+  _null,
+  _undefined
+];
+
+function partial_arg$5(param, param$1) {
+  return any(partial_arg$4, param, param$1);
 }
 
-function not(validator) {
-  return (function (value, path) {
-      var match = Index$Bouncer.doValidation(validator, value, path);
-      if (match.tag) {
-        return /* Success */Block.__(0, [
-                  "not",
-                  value
-                ]);
-      } else {
-        return /* Fail */Block.__(1, [/* :: */[
-                    /* record */[
-                      /* path */path,
-                      /* message */JSON.stringify(match[1]) + (" is a " + match[0]),
-                      /* label */"not"
-                    ],
-                    /* [] */0
-                  ]]);
-      }
-    });
+function exists(param, param$1) {
+  return vNot(partial_arg$5, param, param$1);
 }
 
-function any(validators) {
-  return (function (value, path) {
-      var validations = validators.map((function (v) {
-              return Index$Bouncer.doValidation(v, value, path);
-            }));
-      return anyValidation(Belt_List.fromArray(validations));
+function optional(validator) {
+  var partial_arg = /* array */[
+    (function (param, param$1) {
+        return vNot(exists, param, param$1);
+      }),
+    validator
+  ];
+  return (function (param, param$1) {
+      return any(partial_arg, param, param$1);
     });
-}
-
-function custom(customV) {
-  return (function (value, path) {
-      var match = Curry._1(customV.validator, value);
-      if (match) {
-        return /* Success */Block.__(0, [
-                  customV.label,
-                  value
-                ]);
-      } else {
-        return /* Fail */Block.__(1, [/* :: */[
-                    /* record */[
-                      /* path */path,
-                      /* message */Curry._1(customV.message, value),
-                      /* label */customV.label
-                    ],
-                    /* [] */0
-                  ]]);
-      }
-    });
-}
-
-var number = custom({
-      validator: (function (prim) {
-          return Is_js.number(prim);
-        }),
-      message: (function (value) {
-          return JSON.stringify(value) + " is not a number";
-        }),
-      label: "number"
-    });
-
-var string = custom({
-      validator: (function (prim) {
-          return Is_js.string(prim);
-        }),
-      message: (function (value) {
-          return JSON.stringify(value) + " is not a string";
-        }),
-      label: "string"
-    });
-
-var _undefined = custom({
-      validator: (function (prim) {
-          return Is_js.undefined(prim);
-        }),
-      message: (function (value) {
-          return JSON.stringify(value) + " is not undefined";
-        }),
-      label: "undefined"
-    });
-
-var _null = custom({
-      validator: (function (prim) {
-          return Is_js.null(prim);
-        }),
-      message: (function (value) {
-          return JSON.stringify(value) + " is not null";
-        }),
-      label: "null"
-    });
-
-function exists(value, path) {
-  return any(/* array */[])(value, path);
 }
 
 exports.concatValidation = concatValidation;
@@ -282,12 +364,16 @@ exports.anyValidation = anyValidation;
 exports.list = list;
 exports.record = record;
 exports.tuple = tuple;
-exports.not = not;
+exports.vNot = vNot;
 exports.any = any;
+exports.all = all;
 exports.custom = custom;
 exports.number = number;
 exports.string = string;
 exports._undefined = _undefined;
 exports._null = _null;
+exports.maxStringLength = maxStringLength;
+exports.minStringLength = minStringLength;
 exports.exists = exists;
-/* number Not a pure module */
+exports.optional = optional;
+/* is_js Not a pure module */

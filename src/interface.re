@@ -1,0 +1,15 @@
+let list = validator => Validators.list(validator);
+let tuple = validator => Validators.tuple(validator);
+let record = validator => Validators.record(validator);
+let maxStringLength = int => Validators.maxStringLength(int);
+let minStringLength = int => Validators.minStringLength(int);
+let any = validators => Validators.any(validators);
+let all = validators => Validators.all(validators);
+let optional = validator => Validators.optional(validator);
+let custom = customV => Validators.custom(customV);
+let number = value => Validators.number(value);
+let string = value => Validators.string(value);
+let _undefined = value => Validators._undefined(value);
+let _null = value => Validators._null(value);
+let (!) = validator => Validators.vNot(validator);
+let exists = value => Validators.exists(value);

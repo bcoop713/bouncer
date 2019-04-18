@@ -1,6 +1,20 @@
 const { validate } = require('../src/index.bs')
 const { email } = require('is_js');
-const { number, string, list, record, tuple, custom, not, any, exists } = require('../src/validators.bs')
+const {
+    number,
+    string,
+    list,
+    record,
+    tuple,
+    custom,
+    not,
+    any,
+    all,
+    exists,
+    optional,
+    maxStringLength,
+    minStringLength
+} = require('../src/interface.bs')
 
 describe('simple', () => {
     test('valid', () => {
@@ -117,6 +131,35 @@ describe('custom', () => {
     })
 })
 
+describe('maxStringLength', () => {
+    test('valid', () => {
+        const value = 'cat'
+        const validator = maxStringLength(4)
+        const validation = validate(validator, value)
+        expect(validation).toEqual([])
+    })
+    test('invalid', () => {
+        const value = 'cats suck'
+        const validator = maxStringLength(4)
+        const validation = validate(validator, value)
+        expect(validation).toEqual([{ path: '', message: '\"cats suck\" is greater than 4' }])
+    })
+})
+describe('minStringLength', () => {
+    test('valid', () => {
+        const value = 'cats suck'
+        const validator = minStringLength(4)
+        const validation = validate(validator, value)
+        expect(validation).toEqual([])
+    })
+    test('invalid', () => {
+        const value = 'cat'
+        const validator = minStringLength(4)
+        const validation = validate(validator, value)
+        expect(validation).toEqual([{ path: '', message: '\"cat\" is less than 4' }])
+    })
+})
+
 describe('not', () => {
     test('valid', () => {
         const value = 'cat'
@@ -150,11 +193,64 @@ describe('any', () => {
     })
 })
 
+describe('all', () => {
+    test('valid', () => {
+        const value = 'cat'
+        const validator = all([minStringLength(3), maxStringLength(4)])
+        const validation = validate(validator, value)
+        expect(validation).toEqual([])
+    })
+    test('invalid', () => {
+        const value = 'ca'
+        const validator = all([minStringLength(3), maxStringLength(4)])
+        const validation = validate(validator, value)
+        expect(validation).toEqual([
+            { path: '', message: '\"ca\" is less than 3' },
+        ])
+    })
+})
+
 describe('exists', () => {
     test('valid', () => {
         const value = 3
         const validator = exists
         const validation = validate(validator, value)
         expect(validation).toEqual([])
+    })
+    test('invalid', () => {
+        const value = undefined
+        const validator = exists
+        const validation = validate(validator, value)
+        expect(validation).toEqual([{ path: '', message: 'undefined is a undefined' }])
+    })
+})
+
+describe('optional', () => {
+    test('valid value', () => {
+        const value = 3
+        const validator = optional(number)
+        const validation = validate(validator, value)
+        expect(validation).toEqual([])
+    })
+    test('valid missing', () => {
+        const value = null
+        const validator = optional(number)
+        const validation = validate(validator, value)
+        expect(validation).toEqual([])
+    })
+    test('valid missing key', () => {
+        const value = { a: 'cat' }
+        const validator = record({ a: string, b: optional(string) })
+        const validation = validate(validator, value)
+        expect(validation).toEqual([])
+    })
+    test('invalid key', () => {
+        const value = { a: 'cat', b: 3 }
+        const validator = record({ a: string, b: optional(string) })
+        const validation = validate(validator, value)
+        expect(validation).toEqual([
+            { path: 'b', message: '3 is a not' },
+            { path: 'b', message: '3 is not a string' }
+        ])
     })
 })
