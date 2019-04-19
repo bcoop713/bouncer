@@ -13,3 +13,4 @@ let _undefined = value => Validators._undefined(value);
 let _null = value => Validators._null(value);
 let (!) = validator => Validators.vNot(validator);
 let exists = value => Validators.exists(value);
+let validate = Index.validate;
