@@ -3,6 +3,30 @@
 import * as Index$Bouncer from "./index.bs.js";
 import * as Validators$Bouncer from "./validators.bs.js";
 
+function number(value) {
+  return (function (param) {
+      return Validators$Bouncer.number(value, param);
+    });
+}
+
+function string(value) {
+  return (function (param) {
+      return Validators$Bouncer.string(value, param);
+    });
+}
+
+function _undefined(value) {
+  return (function (param) {
+      return Validators$Bouncer._undefined(value, param);
+    });
+}
+
+function _null(value) {
+  return (function (param) {
+      return Validators$Bouncer._null(value, param);
+    });
+}
+
 function list(validator) {
   return (function (param, param$1) {
       return Validators$Bouncer.list(validator, param, param$1);
@@ -45,30 +69,6 @@ function custom(customV) {
     });
 }
 
-function number(value) {
-  return (function (param) {
-      return Validators$Bouncer.number(value, param);
-    });
-}
-
-function string(value) {
-  return (function (param) {
-      return Validators$Bouncer.string(value, param);
-    });
-}
-
-function _undefined(value) {
-  return (function (param) {
-      return Validators$Bouncer._undefined(value, param);
-    });
-}
-
-function _null(value) {
-  return (function (param) {
-      return Validators$Bouncer._null(value, param);
-    });
-}
-
 function not(validator) {
   return (function (param, param$1) {
       return Validators$Bouncer.vNot(validator, param, param$1);
@@ -84,6 +84,10 @@ function exists(value) {
 var validate = Index$Bouncer.validate;
 
 export {
+  number ,
+  string ,
+  _undefined ,
+  _null ,
   list ,
   tuple ,
   record ,
@@ -93,10 +97,6 @@ export {
   all ,
   optional ,
   custom ,
-  number ,
-  string ,
-  _undefined ,
-  _null ,
   not ,
   exists ,
   validate ,

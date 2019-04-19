@@ -1,4 +1,3 @@
-const { validate } = require('../src/index.bs')
 const { email } = require('is_js');
 const {
     number,
@@ -13,8 +12,10 @@ const {
     exists,
     optional,
     maxStringLength,
-    minStringLength
-} = require('../src/interface.bs')
+    minStringLength,
+    validate
+} = require('../bundle')
+console.log("WTF XXXXXXXXX", optional)
 
 describe('simple', () => {
     test('valid', () => {
@@ -245,6 +246,7 @@ describe('optional', () => {
         expect(validation).toEqual([])
     })
     test('invalid key', () => {
+        console.log("WTF XXXXXXXXX", optional)
         const value = { a: 'cat', b: 3 }
         const validator = record({ a: string, b: optional(string) })
         const validation = validate(validator, value)
