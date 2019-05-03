@@ -12,6 +12,13 @@ type failure = {
   label: string,
 };
 
+type node = {_type: string};
+
+type schema = {
+  node,
+  next: list(unit => schema),
+};
+
 type validation =
   | Success(string, value)
   | Fail(list(failure));
