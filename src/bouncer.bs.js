@@ -339,6 +339,95 @@ function any(schemas) {
         ];
 }
 
+function all(schemas) {
+  return /* record */[
+          /* validator */(function (value, path) {
+              return combineValidations(List.map((function (s) {
+                                return Curry._2(s[/* validator */0], value, path);
+                              }), $$Array.to_list(schemas)));
+            }),
+          /* name */"all"
+        ];
+}
+
+function minStringLength(l) {
+  var name = "minStringLength: " + String(l);
+  var validator = function (value, path) {
+    var match = Js_json.decodeString(value);
+    if (match !== undefined) {
+      var match$1 = match.length >= l;
+      if (match$1) {
+        return /* Success */Block.__(0, [/* record */[
+                    /* path */path,
+                    /* value */value,
+                    /* name */name
+                  ]]);
+      } else {
+        return /* Fail */Block.__(1, [/* :: */[
+                    /* record */[
+                      /* path */path,
+                      /* value */value,
+                      /* name */name
+                    ],
+                    /* [] */0
+                  ]]);
+      }
+    } else {
+      return /* Fail */Block.__(1, [/* :: */[
+                  /* record */[
+                    /* path */path,
+                    /* value */value,
+                    /* name */name
+                  ],
+                  /* [] */0
+                ]]);
+    }
+  };
+  return /* record */[
+          /* validator */validator,
+          /* name */name
+        ];
+}
+
+function maxStringLength(l) {
+  var name = "maxStringLength: " + String(l);
+  var validator = function (value, path) {
+    var match = Js_json.decodeString(value);
+    if (match !== undefined) {
+      var match$1 = match.length <= l;
+      if (match$1) {
+        return /* Success */Block.__(0, [/* record */[
+                    /* path */path,
+                    /* value */value,
+                    /* name */name
+                  ]]);
+      } else {
+        return /* Fail */Block.__(1, [/* :: */[
+                    /* record */[
+                      /* path */path,
+                      /* value */value,
+                      /* name */name
+                    ],
+                    /* [] */0
+                  ]]);
+      }
+    } else {
+      return /* Fail */Block.__(1, [/* :: */[
+                  /* record */[
+                    /* path */path,
+                    /* value */value,
+                    /* name */name
+                  ],
+                  /* [] */0
+                ]]);
+    }
+  };
+  return /* record */[
+          /* validator */validator,
+          /* name */name
+        ];
+}
+
 export {
   doValidate ,
   validationToOutput ,
@@ -357,6 +446,9 @@ export {
   not ,
   anyValidations ,
   any ,
+  all ,
+  minStringLength ,
+  maxStringLength ,
   
 }
 /* No side effect */

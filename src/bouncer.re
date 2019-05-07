@@ -84,13 +84,11 @@ let string: schema = {
 };
 
 let custom = (validator: value => bool, name: string): schema => {
-  validator: (value, path) => 
-  switch(validator(value)) {
-  | true => Success({path, value, name})
-  | false => Fail([{path, value, name}])
-  },
-  name
-}
+  validator: (value, path) =>
+    validator(value) ?
+      Success({path, value, name}) : Fail([{path, value, name}]),
+  name,
+};
 
 let listValidator = (schema: schema, value: value, path: path): validation =>
   switch (Js.Json.decodeArray(value)) {
@@ -125,36 +123,32 @@ let recordValidator =
            | None => Fail([{path: key, value, name: "key"}])
            }
          )
-         |> Array.to_list
-    combineValidations(validations)
-    
+      |> Array.to_list;
+    combineValidations(validations);
   };
-
 
 let record = (schemaDict: Js.Dict.t(schema)): schema => {
   validator: recordValidator(schemaDict),
   name: "record",
 };
 
-let tupleValidator = (schemas: Js.Array.t(schema), value: value, path: path): validation =>
+let tupleValidator =
+    (schemas: Js.Array.t(schema), value: value, path: path): validation =>
   switch (Js.Json.decodeArray(value)) {
   | None => Fail([{path, value, name: "tuple"}])
   | Some(tuple) =>
-    let validations = 
+    let validations =
       schemas
-      |> Js.Array.mapi(
-        ((schema, i) =>
+      |> Js.Array.mapi((schema, i) =>
            switch (tuple[i]) {
-           | v =>
-             doValidate(schema, v, string_of_int(i))
-           | exception Invalid_argument(_) => Fail([{path: string_of_int(i), value, name: "index"}])
+           | v => doValidate(schema, v, string_of_int(i))
+           | exception (Invalid_argument(_)) =>
+             Fail([{path: string_of_int(i), value, name: "index"}])
            }
-         ))
-      |> Array.to_list
-    combineValidations(validations)
-    
+         )
+      |> Array.to_list;
+    combineValidations(validations);
   };
-
 
 let tuple = (schemas: Js.Array.t(schema)): schema => {
   validator: tupleValidator(schemas),
@@ -162,29 +156,79 @@ let tuple = (schemas: Js.Array.t(schema)): schema => {
 };
 
 let (!) = (schema: schema): schema => {
-  validator: (value, path) => switch(doValidate(schema, value, path)) {
-  | Success(_) => Fail([{path, value, name: "not " ++ schema.name}])
-  | Fail(_) => Success({path, value, name: "not " ++ schema.name})
-  },
-  name: "not " ++ schema.name
-}
+  validator: (value, path) =>
+    switch (doValidate(schema, value, path)) {
+    | Success(_) => Fail([{path, value, name: "not " ++ schema.name}])
+    | Fail(_) => Success({path, value, name: "not " ++ schema.name})
+    },
+  name: "not " ++ schema.name,
+};
 
-let anyValidations = (validations: list(validation), value: value, path: path, name: name ): validation => {
-  let fails = List.filter(v => switch(v) {
-      | Success(_) => true
-      | Fail(_) => false
-    }, validations);
-  switch(fails) {
+let anyValidations =
+    (validations: list(validation), value: value, path: path, name: name)
+    : validation => {
+  let fails =
+    List.filter(
+      v =>
+        switch (v) {
+        | Success(_) => true
+        | Fail(_) => false
+        },
+      validations,
+    );
+  switch (fails) {
   | [] => Fail([{value, path, name}])
   | _ => Success({value, path, name})
-  }
-}
+  };
+};
 
 let any = (schemas: Js.Array.t(schema)): schema => {
-  let schemaNames = schemas |> Array.map(s => s.name) |> Js.Array.reduce((a, b) => a ++ " " ++ b, "");
+  let schemaNames =
+    schemas
+    |> Array.map(s => s.name)
+    |> Js.Array.reduce((a, b) => a ++ " " ++ b, "");
   let name = "any:" ++ schemaNames;
   {
-    validator: (value, path) => anyValidations(schemas |> Array.to_list |> List.map(s => doValidate(s, value, path)), value, path, name),
-    name
-  }
-}
+    validator: (value, path) =>
+      anyValidations(
+        schemas |> Array.to_list |> List.map(s => doValidate(s, value, path)),
+        value,
+        path,
+        name,
+      ),
+    name,
+  };
+};
+
+let all = (schemas: Js.Array.t(schema)): schema => {
+  validator: (value, path) =>
+    schemas
+    |> Array.to_list
+    |> List.map(s => doValidate(s, value, path))
+    |> combineValidations,
+  name: "all",
+};
+
+let minStringLength = (l: int): schema => {
+  let name = "minStringLength: " ++ l->string_of_int;
+  let validator = (value, path) =>
+    switch (Js.Json.decodeString(value)) {
+    | None => Fail([{value, path, name}])
+    | Some(s) =>
+      String.length(s) >= l ?
+        Success({value, path, name}) : Fail([{value, path, name}])
+    };
+  {validator, name};
+};
+
+let maxStringLength = (l: int): schema => {
+  let name = "maxStringLength: " ++ l->string_of_int;
+  let validator = (value, path) =>
+    switch (Js.Json.decodeString(value)) {
+    | None => Fail([{value, path, name}])
+    | Some(s) =>
+      String.length(s) <= l ?
+        Success({value, path, name}) : Fail([{value, path, name}])
+    };
+  {validator, name};
+};

@@ -928,8 +928,98 @@ function any(schemas) {
           /* name */name
         ];
 }
+
+function all(schemas) {
+  return /* record */[
+          /* validator */(function (value, path) {
+              return combineValidations(map((function (s) {
+                                return _2(s[/* validator */0], value, path);
+                              }), to_list(schemas)));
+            }),
+          /* name */"all"
+        ];
+}
+
+function minStringLength(l) {
+  var name = "minStringLength: " + String(l);
+  var validator = function (value, path) {
+    var match = decodeString(value);
+    if (match !== undefined) {
+      var match$1 = match.length >= l;
+      if (match$1) {
+        return /* Success */__(0, [/* record */[
+                    /* path */path,
+                    /* value */value,
+                    /* name */name
+                  ]]);
+      } else {
+        return /* Fail */__(1, [/* :: */[
+                    /* record */[
+                      /* path */path,
+                      /* value */value,
+                      /* name */name
+                    ],
+                    /* [] */0
+                  ]]);
+      }
+    } else {
+      return /* Fail */__(1, [/* :: */[
+                  /* record */[
+                    /* path */path,
+                    /* value */value,
+                    /* name */name
+                  ],
+                  /* [] */0
+                ]]);
+    }
+  };
+  return /* record */[
+          /* validator */validator,
+          /* name */name
+        ];
+}
+
+function maxStringLength(l) {
+  var name = "maxStringLength: " + String(l);
+  var validator = function (value, path) {
+    var match = decodeString(value);
+    if (match !== undefined) {
+      var match$1 = match.length <= l;
+      if (match$1) {
+        return /* Success */__(0, [/* record */[
+                    /* path */path,
+                    /* value */value,
+                    /* name */name
+                  ]]);
+      } else {
+        return /* Fail */__(1, [/* :: */[
+                    /* record */[
+                      /* path */path,
+                      /* value */value,
+                      /* name */name
+                    ],
+                    /* [] */0
+                  ]]);
+      }
+    } else {
+      return /* Fail */__(1, [/* :: */[
+                  /* record */[
+                    /* path */path,
+                    /* value */value,
+                    /* name */name
+                  ],
+                  /* [] */0
+                ]]);
+    }
+  };
+  return /* record */[
+          /* validator */validator,
+          /* name */name
+        ];
+}
 /* No side effect */
 
+exports.all = all;
 exports.any = any;
 exports.anyValidations = anyValidations;
 exports.combineValidations = combineValidations;
@@ -938,6 +1028,8 @@ exports.custom = custom;
 exports.doValidate = doValidate;
 exports.list = list;
 exports.listValidator = listValidator;
+exports.maxStringLength = maxStringLength;
+exports.minStringLength = minStringLength;
 exports.not = not;
 exports.number = number;
 exports.record = record$1;

@@ -8,11 +8,11 @@ const {
     custom,
     not,
     any,
-    // all,
+    all,
     // exists,
     // optional,
-    // maxStringLength,
-    // minStringLength,
+    maxStringLength,
+    minStringLength,
     validate
 } = require('../bundle.js')
 
@@ -155,7 +155,37 @@ fdescribe('any', () => {
     })
 })
 
-describe('all', () => {
+fdescribe('minStringLength', () => {
+    test('valid', () => {
+        const value = 'cat'
+        const validator = minStringLength(2)
+        const validation = validate(validator, value)
+        expect(validation).toEqual([])
+    })
+    test('invalid', () => {
+        const value = 'c'
+        const validator = minStringLength(2)
+        const validation = validate(validator, value)
+        expect(validation).toEqual([{ path: '', name: 'minStringLength: 2', target: 'c' }])
+    })
+})
+
+fdescribe('maxStringLength', () => {
+    test('valid', () => {
+        const value = 'cat'
+        const validator = maxStringLength(4)
+        const validation = validate(validator, value)
+        expect(validation).toEqual([])
+    })
+    test('invalid', () => {
+        const value = 'catssuck'
+        const validator = maxStringLength(4)
+        const validation = validate(validator, value)
+        expect(validation).toEqual([{ path: '', name: 'maxStringLength: 4', target: 'catssuck' }])
+    })
+})
+
+fdescribe('all', () => {
     test('valid', () => {
         const value = 'cat'
         const validator = all([minStringLength(3), maxStringLength(4)])
@@ -166,9 +196,7 @@ describe('all', () => {
         const value = 'ca'
         const validator = all([minStringLength(3), maxStringLength(4)])
         const validation = validate(validator, value)
-        expect(validation).toEqual([
-            { path: '', message: '\"ca\" is less than 3' },
-        ])
+        expect(validation).toEqual([{ path: '', name: 'minStringLength: 3', target: 'ca' }])
     })
 })
 
